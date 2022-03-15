@@ -39,22 +39,24 @@ const (
 )
 
 var (
-	host             *string
-	port             *int
-	nid              *int
-	password         *int
-	getProductFlag   *bool
-	getTimeFlag      *bool
-	getUserCountFlag *bool
-	getUsersFlag     *bool
+	host                *string
+	port                *int
+	nid                 *int
+	password            *int
+	getProductFlag      *bool
+	getSerialNumberFlag *bool
+	getTimeFlag         *bool
+	getUserCountFlag    *bool
+	getUsersFlag        *bool
 )
 
 func init() {
 	host = flag.String("host", "127.0.0.1", "Specifies the host name or IP address of the remote machine to connect to")
 	port = flag.Int("port", 5005, "Specify a port number")
-	nid = flag.Int("nid", 1, "Specify NID of device")
+	nid = flag.Int("nid", 1, "Specify machine number")
 	password = flag.Int("pass", 0, "Specify device password")
-	getProductFlag = flag.Bool("get-product", false, "Get product code")
+	getProductFlag = flag.Bool("get-product", false, "Obtain machine product code")
+	getSerialNumberFlag = flag.Bool("get-serial-number", false, "Obtain machine serial number")
 	getTimeFlag = flag.Bool("get-time", false, "Get machine date and time")
 	getUserCountFlag = flag.Bool("get-user-count", false, "Get number of user registered into machine")
 	getUsersFlag = flag.Bool("get-users", false, "Get number of user registered into machine")
@@ -80,6 +82,10 @@ func main() {
 		if *getProductFlag {
 			productCode := getProductCode(conn, uint16(*nid))
 			log.Println(productCode)
+		}
+		if *getSerialNumberFlag {
+			serialNumber := getSerialNumber(conn, uint16(*nid))
+			log.Println(serialNumber)
 		}
 		if *getTimeFlag {
 			dateTime := getDateTime(conn, uint16(*nid))
@@ -157,6 +163,64 @@ func connect(conn *net.TCPConn, nid uint16, password uint16) bool {
 
 func getProductCode(conn *net.TCPConn, nid uint16) string {
 	const command uint32 = 0x00000114
+	buffer := make([]byte, 16)
+	binary.LittleEndian.PutUint16(buffer[0:2], uint16(start_dword))
+	binary.LittleEndian.PutUint16(buffer[2:4], uint16(nid))
+	binary.LittleEndian.PutUint16(buffer[4:6], uint16(end_dword))
+	binary.LittleEndian.PutUint32(buffer[6:10], command)
+	calculateChecksum(buffer)
+	// Send command
+	conn.Write(buffer)
+	reply1 := make([]byte, 8)
+	cnt, err := conn.Read(reply1)
+	if err != nil {
+		log.Fatalf("Send command to server failed: %v\n", err)
+		os.Exit(1)
+	}
+	if cnt != 8 {
+		log.Fatalf("Invalid server reply #1: length=%v, data=%v\n", cnt, reply1)
+		os.Exit(1)
+	}
+	replyNid := binary.LittleEndian.Uint16(reply1[2:4])
+	replyStatus := binary.LittleEndian.Uint16(reply1[4:6])
+	// verify reply status
+	if replyStatus == 1 && replyNid == nid {
+		reply2 := make([]byte, 14)
+		// read second message
+		cnt, err = conn.Read(reply2)
+		if err != nil {
+			log.Fatalf("Read server reply failed: %v\n", err)
+			os.Exit(1)
+		}
+		if cnt != 14 {
+			log.Fatalf("Invalid server reply #2: length=%v, data=%v\n", cnt, reply2)
+			os.Exit(1)
+		}
+		replyNid = binary.LittleEndian.Uint16(reply2[2:4])
+		replyStatus = binary.LittleEndian.Uint16(reply2[6:8])
+		// verify second reply status
+		if replyStatus == 1 && replyNid == nid {
+			reply3 := make([]byte, 38)
+			// read actual response contain product code
+			cnt, err = conn.Read(reply3)
+			if err != nil {
+				log.Fatalf("Read server reply failed: %v\n", err)
+				os.Exit(1)
+			}
+			if cnt != 38 {
+				log.Fatalf("Invalid server reply #3: length=%v, data=%v\n", cnt, reply3)
+				os.Exit(1)
+			}
+			// parse and return product code info
+			result := reply3[4 : cnt-2]
+			return string(result)
+		}
+	}
+	return ""
+}
+
+func getSerialNumber(conn *net.TCPConn, nid uint16) string {
+	const command uint32 = 0x00000115
 	buffer := make([]byte, 16)
 	binary.LittleEndian.PutUint16(buffer[0:2], uint16(start_dword))
 	binary.LittleEndian.PutUint16(buffer[2:4], uint16(nid))
