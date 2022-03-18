@@ -1,3 +1,3 @@
-module github.com/masykur/keico-sf3000
+module github.com/masykur/keico
 
 go 1.17
