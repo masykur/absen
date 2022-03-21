@@ -1,8 +1,9 @@
-package machine
+package machines
 
 import (
 	"encoding/binary"
 	"fmt"
+	entity "github.com/masykur/keico/pkg/entity"
 	"net"
 	"time"
 	"unsafe"
@@ -263,7 +264,7 @@ func (dev *Sf3000) GetUserCount() (int, error) {
 }
 
 // Get list of users from machine
-func (dev *Sf3000) GetUsers() ([]User, error) {
+func (dev *Sf3000) GetUsers() ([]entity.User, error) {
 	// prepare command bytes array
 	dev.prepareCommand(0x0109, 0x0)
 	// Send command
@@ -271,10 +272,10 @@ func (dev *Sf3000) GetUsers() ([]User, error) {
 	reply1 := make([]byte, 8)
 	cnt, err := dev.conn.Read(reply1)
 	if err != nil {
-		return []User{}, fmt.Errorf("send command to server failed: %v", err)
+		return []entity.User{}, fmt.Errorf("send command to server failed: %v", err)
 	}
 	if cnt != 8 {
-		return []User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
+		return []entity.User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
 	}
 	replyStatus := binary.LittleEndian.Uint16(reply1[4:6])
 	// verify reply status
@@ -283,10 +284,10 @@ func (dev *Sf3000) GetUsers() ([]User, error) {
 		reply2 := make([]byte, 14)
 		cnt, err = dev.conn.Read(reply2)
 		if err != nil {
-			return []User{}, fmt.Errorf("read server reply failed: %v", err)
+			return []entity.User{}, fmt.Errorf("read server reply failed: %v", err)
 		}
 		if cnt != 14 {
-			return []User{}, fmt.Errorf("invalid server reply. Expected message length is 14 but actual is %v", cnt)
+			return []entity.User{}, fmt.Errorf("invalid server reply. Expected message length is 14 but actual is %v", cnt)
 		}
 		replyStatus = binary.LittleEndian.Uint16(reply2[6:8])
 		// verify second reply status
@@ -298,7 +299,7 @@ func (dev *Sf3000) GetUsers() ([]User, error) {
 			for {
 				cnt, err = dev.conn.Read(reply3)
 				if err != nil {
-					return []User{}, fmt.Errorf("read server reply failed: %v", err)
+					return []entity.User{}, fmt.Errorf("read server reply failed: %v", err)
 				}
 				data = append(data, reply3[4:cnt-2]...)
 				if cnt == 0 || len(data) == cap(data) {
@@ -306,26 +307,30 @@ func (dev *Sf3000) GetUsers() ([]User, error) {
 				}
 			}
 
-			users := make([]User, 0, dataLength)
+			users := make([]entity.User, 0, dataLength)
 			for i := uint32(0); i < dataLength; i++ {
 				uId := binary.LittleEndian.Uint32(data[i*8 : 4+i*8])
 				uLevel := data[4+i*8]
 				uSensor := data[5+i*8]
 				uCardId := binary.LittleEndian.Uint16(data[6+i*8 : 8+i*8])
-				users = append(users, User{
+				users = append(users, entity.User{
 					Id:     int(uId),
-					Level:  Level(uLevel),
-					Sensor: Sensor(uSensor),
+					Level:  entity.Level(uLevel),
+					Sensor: entity.Sensor(uSensor),
 					CardId: int(uCardId)})
 			}
 			return users, nil
 		}
 	}
-	return []User{}, fmt.Errorf("invalid respond message")
+	return []entity.User{}, fmt.Errorf("invalid respond message")
 }
 
-func (dev *Sf3000) GetEnrollData(userId int) (User, error) {
+func (dev *Sf3000) GetEnrollData(userId int) (entity.User, error) {
 	// prepare command bytes array
+	const (
+		fingerPrintSize int = 1404 + 12
+		enrollDataSize  int = (4*8 + fingerPrintSize*2)
+	)
 	userIds := make([]byte, 4)
 	binary.LittleEndian.PutUint32(userIds, uint32(userId))
 	dev.prepareCommand(0x0103, uint16(userId&0xffff), uint16(userId>>16))
@@ -334,34 +339,35 @@ func (dev *Sf3000) GetEnrollData(userId int) (User, error) {
 	reply1 := make([]byte, 8)
 	cnt, err := dev.conn.Read(reply1)
 	if err != nil {
-		return User{}, fmt.Errorf("send command to server failed: %v", err)
+		return entity.User{}, fmt.Errorf("send command to server failed: %v", err)
 	}
 	if cnt != 8 {
-		return User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
+		return entity.User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
 	}
 	// verify reply status
 	if isMessageValid(reply1[:cnt]) {
 		// read second message
 		reply2 := make([]byte, 1026) // max package size is 1026 bytes
-		data := make([]byte, 0, 2864)
+		data := make([]byte, 0, enrollDataSize)
 		for {
 			cnt, err = dev.conn.Read(reply2)
 			if err != nil {
-				return User{}, fmt.Errorf("read server reply failed: %v", err)
+				return entity.User{}, fmt.Errorf("read server reply failed: %v", err)
 			}
 			data = append(data, reply2[4:cnt-2]...)
 			if cnt < 1026 || len(data) == cap(data) {
 				break
 			}
 		}
-		user := User{
-			Id:     userId,
-			Level:  Level(0),
-			Sensor: Sensor(0),
-			CardId: int(binary.LittleEndian.Uint16(data[24:26])),
-			Data:   data[32:]}
+		user := entity.User{
+			Id:           userId,
+			Level:        entity.Level(0),
+			Sensor:       entity.Sensor(0),
+			CardId:       int(binary.LittleEndian.Uint16(data[24:26])),
+			FingerPrint1: data[32 : 32+fingerPrintSize],
+			FingerPrint2: data[32+fingerPrintSize:]}
 		return user, nil
 	}
-	return User{}, fmt.Errorf("invalid respond message")
+	return entity.User{}, fmt.Errorf("invalid respond message")
 
 }

@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bufio"
+	"encoding/binary"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/masykur/keico/pkg/entity"
+	"github.com/masykur/keico/pkg/machines"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/masykur/keico/machine"
 )
 
 var (
@@ -56,7 +59,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
-	device := new(machine.Sf3000)
+	device := new(machines.Sf3000)
 	connected, err := device.Connect(conn, uint16(*nid), uint16(*password))
 	if err != nil {
 		println(err.Error())
@@ -101,7 +104,7 @@ func main() {
 			}
 		}
 		if *getUsersFlag {
-			var users []machine.User
+			var users []entity.User
 			users, err = device.GetUsers()
 			if err == nil {
 				fmt.Println("  No    User ID    Priv  Sensor Card ID")
@@ -114,12 +117,24 @@ func main() {
 			}
 		}
 		if *getUser != 0 {
-			var user machine.User
+			var user entity.User
 			user, err = device.GetEnrollData(*getUser)
 			if err == nil {
-				fmt.Println("   User ID      Card ID Data")
-				fmt.Println("---------- ------------ ----")
-				fmt.Printf("%10s\t%7s\t%v\n", strconv.Itoa(user.Id), strconv.Itoa(int(user.CardId)), user.Data)
+				fmt.Println("   User ID      Card ID Finger Print Data")
+				fmt.Println("---------- ------------ -----------------")
+				fmt.Printf("%10s\t%7s\t%v %v\n", strconv.Itoa(user.Id), strconv.Itoa(int(user.CardId)), hex.EncodeToString(user.FingerPrint1), hex.EncodeToString(user.FingerPrint2))
+				f, _ := os.Create("data1.bmp")
+				w := bufio.NewWriter(f)
+				w.Write(user.FingerPrint1[12 : len(user.FingerPrint1)-4])
+				w.Flush()
+				f.Close()
+				s := 0
+				for _, v := range user.FingerPrint2 {
+					s += int(v)
+				}
+				b := make([]byte, 4)
+				binary.LittleEndian.PutUint32(b, uint32(s))
+				fmt.Println(s, hex.EncodeToString(b))
 			} else {
 				log.Fatalln(err)
 			}

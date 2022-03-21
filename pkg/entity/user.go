@@ -1,4 +1,4 @@
-package machine
+package entity
 
 type Level int16
 
@@ -16,11 +16,12 @@ type Sensor int16
 // )
 
 type User struct {
-	Id     int
-	Level  Level
-	Sensor Sensor
-	CardId int
-	Data   []byte
+	Id           int
+	Level        Level
+	Sensor       Sensor
+	CardId       int
+	FingerPrint1 []byte
+	FingerPrint2 []byte
 }
 
 func (user *User) New(id int) {
