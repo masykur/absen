@@ -17,9 +17,11 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.17
-
+    - name: Create output directory
+      run: mkdir -p ./bin
+      
     - name: Build
-      run: go build -v ./...
+      run: go build -o=./bin ./...
 
     - name: Test
       run: go test -v ./...
@@ -29,3 +31,4 @@ jobs:
       with:
         # Artifact name
         name: artifact
+        path: ./bin
