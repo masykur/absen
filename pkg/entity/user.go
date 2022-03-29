@@ -16,12 +16,13 @@ type Sensor int16
 // )
 
 type User struct {
-	Id           int
-	Level        Level
-	Sensor       Sensor
-	CardId       int
-	FingerPrint1 []byte
-	FingerPrint2 []byte
+	Id               int    `json:"Id"`
+	Level            Level  `json:"Level"`
+	Sensor           Sensor `json:"Sensor"`
+	CardId           uint16 `json:"CardId"`
+	CardFacilityCode uint8  `json:"CardFacilityCode"`
+	Fingerprint1     []byte `json:"Fingerprint1,omitempty"`
+	Fingerprint2     []byte `json:"Fingerprint2,omitempty"`
 }
 
 func (user *User) New(id int) {
