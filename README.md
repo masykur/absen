@@ -16,7 +16,7 @@ Implemented machines as below
 - [ ] Upgrade firmware
 #### Date and time
 - [x] Retrieve current date and time from machine
-- [ ] Set current date and time to machine
+- [x] Set current date and time to machine
 #### User data
 - [x] Get enrolled user information including card number, card facility code and fingerprint templates from machine
 - [x] Get number enrolled users from machine
@@ -35,3 +35,11 @@ Implemented machines as below
 - [ ] Delete super log data
 - [ ] Delete all general log data
 - [ ] Delete all super log data
+
+
+## RECO RAC2000, AC2200PC
+
+
+# Disclaimer
+The software is reverse engineered by sniffing network package from official software to machine.
+It is developed without any official references or documentations from hardware maker. 

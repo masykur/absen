@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -25,12 +26,15 @@ func init() {
 	timeCommand.AddCommand(&cobra.Command{
 		Use:     "set [value]",
 		Short:   "Set machine date and time",
-		Example: "sf3000 time set \"2006-01-02 15:04:05\"",
+		Example: "To set machine date and time to specific value:\n\tsf3000 time set \"2006-01-02 15:04:05\"\nTo set machine date and time follow the client PC:\n\tsf3000 time set",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return errors.New("requires a time argument")
+			if len(args) > 1 {
+				return errors.New("too many arguments")
 			}
-			if _, err := time.Parse("2006-01-02 15:04:05", args[0]); err == nil {
+			if len(args) == 0 {
+				return nil
+			}
+			if _, err := time.ParseInLocation("2006-01-02 15:04:05", args[0], time.Local); err == nil {
 				return nil
 			}
 			return fmt.Errorf("invalid date time format: %s", args[0])
@@ -41,15 +45,28 @@ func init() {
 }
 func getTime(cmd *cobra.Command, args []string) {
 	if conn, device, ok := connect(); ok {
+		defer conn.Close()
 		if dateTime, err := device.GetDateTime(); err == nil {
 			fmt.Println(dateTime)
 		} else {
 			log.Fatalln(err)
 		}
-		conn.Close()
 	}
 }
 
 func setTime(cmd *cobra.Command, args []string) {
-	fmt.Println("Set time", cmd.Args, args)
+	var t time.Time
+	if len(args) == 0 {
+		t = time.Now()
+	} else {
+		t, _ = time.ParseInLocation("2006-01-02 15:04:05", args[0], time.Local)
+	}
+	if conn, device, ok := connect(); ok {
+		defer conn.Close()
+		if _, err := device.SetDateTime(t); err == nil {
+			os.Exit(0)
+		} else {
+			log.Fatalln(err)
+		}
+	}
 }

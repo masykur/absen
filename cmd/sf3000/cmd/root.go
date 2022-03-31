@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/masykur/keico/pkg/machines"
+	"github.com/masykur/keico/pkg/sf3000"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +59,7 @@ func initConfig() {
 }
 
 // Open connection and send handshake command to machine
-func connect() (*net.TCPConn, *machines.Sf3000, bool) {
+func connect() (*net.TCPConn, *sf3000.Sf3000, bool) {
 	servAddr := host + ":" + strconv.Itoa(port)
 	dialer := net.Dialer{Timeout: time.Duration(time.Second * 20)}
 	conn, err := dialer.Dial("tcp", servAddr)
@@ -69,7 +69,7 @@ func connect() (*net.TCPConn, *machines.Sf3000, bool) {
 		os.Exit(1)
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
-		device := new(machines.Sf3000)
+		device := new(sf3000.Sf3000)
 		connected, err := device.Connect(tcpConn, uint16(nid), uint16(password))
 		if err != nil {
 			println(err.Error())
