@@ -38,6 +38,10 @@ Implemented machines as below
 
 
 ## RECO RAC2000, AC2200PC
+### Features
+#### Date and time
+- [x] Retrieve current date and time from machine
+- [ ] Set current date and time to machine
 
 
 # Disclaimer
