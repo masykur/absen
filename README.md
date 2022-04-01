@@ -1,7 +1,7 @@
 # keico
-KEICO Time Attendance machine TCP communication writen in Go
+Time Attendance and access control machine TCP communication writen in Go
 
-Implemented machines as below
+Implemented machines are below
 ## Keico SF3000
 
 ### Features
@@ -42,8 +42,14 @@ Implemented machines as below
 #### Date and time
 - [x] Retrieve current date and time from machine
 - [ ] Set current date and time to machine
+#### Card
+- [ ] Add / register new card to machine 
+- [ ] Delete / unregister card from machine
+- [ ] Add / register visitor card for certain periods of time
+- [ ] Delete/ unregister visitor card
+#### Log data
+- [ ] Read log data
+- [ ] Clear log data 
 
 
-# Disclaimer
-The software is reverse engineered by sniffing network package from official software to machine.
-It is developed without any official references or documentations from hardware maker. 
+> **Note:** _The software is reverse engineered by sniffing network package between official software and machine. It is developed without any official references or documentations from hardware maker._ 
