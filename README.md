@@ -41,7 +41,7 @@ Implemented machines are below
 ### Features
 #### Date and time
 - [x] Retrieve current date and time from machine
-- [ ] Set current date and time to machine
+- [x] Set current date and time to machine
 #### Card
 - [ ] Add / register new card to machine 
 - [ ] Delete / unregister card from machine

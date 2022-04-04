@@ -47,7 +47,7 @@ func init() {
 func getTime(cmd *cobra.Command, args []string) {
 	servAddr := host + ":" + strconv.Itoa(port)
 	device := new(rac2000.Rac2000)
-	if ok, err := device.Connect(servAddr, time.Duration(time.Second*20)); ok {
+	if ok, err := device.Connect(servAddr, nid, time.Duration(time.Second*20)); ok {
 		defer device.Close()
 		if dateTime, err := device.GetDateTime(); err == nil {
 			fmt.Println(dateTime)
@@ -60,5 +60,22 @@ func getTime(cmd *cobra.Command, args []string) {
 }
 
 func setTime(cmd *cobra.Command, args []string) {
-	log.Fatalln("not implemented")
+	var t time.Time
+	if len(args) == 0 {
+		t = time.Now()
+	} else {
+		t, _ = time.ParseInLocation("2006-01-02 15:04:05", args[0], time.Local)
+	}
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(rac2000.Rac2000)
+	if ok, err := device.Connect(servAddr, nid, time.Duration(time.Second*20)); ok {
+		defer device.Close()
+		if ok, err := device.SetDateTime(t); ok {
+			return
+		} else {
+			log.Fatalln(err)
+		}
+	} else {
+		log.Fatalln(err)
+	}
 }
