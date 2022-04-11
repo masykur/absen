@@ -1,4 +1,4 @@
-# keico
+# Absen
 Time Attendance and access control machine TCP communication writen in Go
 
 Implemented machines are below
