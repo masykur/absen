@@ -48,7 +48,7 @@ Implemented machines are below
 - [ ] Add / register visitor card for certain periods of time
 - [ ] Delete/ unregister visitor card
 #### Log data
-- [ ] Read log data
+- [x] Fetch log data
 - [ ] Clear log data 
 
 
