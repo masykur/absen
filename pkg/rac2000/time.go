@@ -1,26 +1,9 @@
 package rac2000
 
 import (
-	"encoding/hex"
 	"fmt"
 	"time"
 )
-
-// NOTE: this isn't multi-Unicode-codepoint aware, like specifying skintone or
-//       gender of an emoji: https://unicode.org/emoji/charts/full-emoji-modifiers.html
-func substr(input string, start int, length int) string {
-	asRunes := []rune(input)
-
-	if start >= len(asRunes) {
-		return ""
-	}
-
-	if start+length > len(asRunes) {
-		length = len(asRunes) - start
-	}
-
-	return string(asRunes[start : start+length])
-}
 
 // Obtain current date and time from machine
 func (dev *Rac2000) GetDateTime() (time.Time, error) {
@@ -34,34 +17,30 @@ func (dev *Rac2000) GetDateTime() (time.Time, error) {
 		if cnt != 21 {
 			return time.Time{}, fmt.Errorf("invalid server reply. Expected message length is 21 but actual is %v", cnt)
 		}
-		replyText := hex.EncodeToString(reply)
-		datePart := substr(replyText, 22, 6)
-		timePart := substr(replyText, 30, 6)
-
-		if dateTime, err := time.ParseInLocation("20060102150405", "20"+datePart+timePart, time.Local); err == nil {
-			return dateTime, nil
-		}
-
-		return time.Time{}, fmt.Errorf("invalid respond message")
+		// decode date and time data from Binary Coded Decimal (BCD) to datetime
+		year := 2000 + bcd2dec(reply[11])
+		month := time.Month(bcd2dec(reply[12]))
+		day := bcd2dec(reply[13])
+		hour := bcd2dec(reply[15])
+		minute := bcd2dec(reply[16])
+		second := bcd2dec(reply[17])
+		dateTime := time.Date(year, month, day, hour, minute, second, 0, time.Local)
+		return dateTime, nil
 	} else {
 		return time.Time{}, fmt.Errorf("send command to server failed: %v", err)
 	}
 }
 
-// Convert decimal to hex number, ex. 12 decimal convert to 0x12 instead of 0x0C
-func dechex(v byte) byte {
-	return ((v / 10) << 4) + ((v % 10) & 0x0F)
-}
-
-// Set current date and time from machine
+// Set date and time to machine
 func (dev *Rac2000) SetDateTime(t time.Time) (bool, error) {
-	year := dechex(byte(t.Year() % 100))
-	month := dechex(byte(t.Month()))
-	day := dechex(byte(t.Day()))
+	// convert decimal of each datetime parts to binary coded decimal
+	year := dec2bcd(t.Year() % 100)
+	month := dec2bcd(int(t.Month()))
+	day := dec2bcd(t.Day())
 	week := byte(t.Weekday())
-	hour := dechex(byte(t.Hour()))
-	minute := dechex(byte(t.Minute()))
-	second := dechex(byte(t.Second()))
+	hour := dec2bcd(t.Hour())
+	minute := dec2bcd(t.Minute())
+	second := dec2bcd(t.Second())
 	command := []byte{0x01, 0xf7, 0x08, 0x01, year, month, day, week, hour, minute, second}
 	if _, err := dev.writeCommand(command...); err == nil {
 		reply := make([]byte, 14)

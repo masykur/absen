@@ -78,11 +78,10 @@ func (dev *Rac2000) FetchLog(previousRecord byte) ([]Log, error) {
 				var logRec Log
 				fmt.Println(recSize, dateTime, rec)
 				if recSize == 14 {
-					number := string(rec[6:])
-					if num, err := strconv.Atoi(substr(number, 0, 3)); err == nil {
+					if num, err := strconv.Atoi(b2s(rec[6:9])); err == nil {
 						cardFacilityCode = uint8(num)
 					}
-					if num, err := strconv.Atoi(substr(number, 3, 5)); err == nil {
+					if num, err := strconv.Atoi(b2s(rec[9:])); err == nil {
 						cardNumber = num
 					}
 					logRec = Log{
