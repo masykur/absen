@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"unsafe"
 
 	"github.com/sigurn/crc16"
 )
@@ -55,4 +56,35 @@ func (dev *Rac2000) writeCommand(parameters ...byte) (int, error) {
 	buffer = calculateChecksum(buffer)
 	rv, err := dev.conn.Write(buffer)
 	return rv, err
+}
+
+// Convert byte array to string without allocate new memory
+func b2s(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+// Binary Coded Decimal (BCD) to decimal converter.
+// Binary coded decimal is not the same as hexadecimal.
+// Whereas a 4-bit hexadecimal number is valid up to F16 representing binary 11112, (decimal 15),
+// binary coded decimal numbers stop at 9 binary 10012.
+// This means that although 16 numbers (24) can be represented using four binary digits,
+// in the BCD numbering system the six binary code combinations of:
+// 1010 (decimal 10), 1011 (decimal 11), 1100 (decimal 12), 1101 (decimal 13), 1110 (decimal 14),
+// and 1111 (decimal 15) are classed as forbidden numbers and can not be used.
+func bcd2dec(b byte) int {
+	// convert using very simple method without error checking
+	return int(b - 6*(b>>4))
+}
+
+// Decimal (base10) to Binary CodedDecimal (BCD) converter.
+// Binary coded decimal is not the same as hexadecimal.
+// Whereas a 4-bit hexadecimal number is valid up to F16 representing binary 11112, (decimal 15),
+// binary coded decimal numbers stop at 9 binary 10012.
+// This means that although 16 numbers (24) can be represented using four binary digits,
+// in the BCD numbering system the six binary code combinations of:
+// 1010 (decimal 10), 1011 (decimal 11), 1100 (decimal 12), 1101 (decimal 13), 1110 (decimal 14),
+// and 1111 (decimal 15) are classed as forbidden numbers and can not be used.
+func dec2bcd(d int) byte {
+	// convert using very simple method without error checking
+	return byte(d + (d / 10 * 6))
 }
