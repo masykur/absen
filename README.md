@@ -1,6 +1,8 @@
 # Absen
 Time Attendance and access control machine TCP communication writen in Go
 
+> **Note:** _The software is reverse engineered by sniffing network package between official software and machine. It is developed without any official references or documentations from hardware maker._ 
+
 Implemented machines are below
 ## Keico SF3000
 
@@ -43,13 +45,10 @@ Implemented machines are below
 - [x] Retrieve current date and time from machine
 - [x] Set current date and time to machine
 #### Card
-- [ ] Add / register new card to machine 
-- [ ] Delete / unregister card from machine
+- [x] Get list of registered cards from machine
+- [x] Add / register new card to machine 
+- [x] Delete / unregister card from machine
 - [ ] Add / register visitor card for certain periods of time
 - [ ] Delete/ unregister visitor card
 #### Log data
 - [x] Fetch log data
-- [ ] Clear log data 
-
-
-> **Note:** _The software is reverse engineered by sniffing network package between official software and machine. It is developed without any official references or documentations from hardware maker._ 
