@@ -63,7 +63,7 @@ func (dev *Sf3000) GetDateTime() (time.Time, error) {
 func (dev *Sf3000) SetDateTime(t time.Time) (bool, error) {
 	firstDate := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.Local)
 	if t.Before(firstDate) {
-		return false, fmt.Errorf("Invalid date, minimum value is \"2000-01-01 00:00:00\"")
+		return false, fmt.Errorf("invalid date, minimum value is \"2000-01-01 00:00:00\"")
 	}
 	// prepare command bytes array
 	dev.prepareCommand(0x011e, 0x0004)

@@ -3,9 +3,32 @@ package sf3000
 import (
 	"encoding/binary"
 	"fmt"
-
-	entity "github.com/masykur/keico/pkg/entity"
 )
+
+type Level int16
+
+// const (
+// 	userLevel   level = 0
+// 	masterLevel level = 1
+// )
+
+type Sensor int16
+
+// const (
+// 	fingerPrint1 sensor = 1
+// 	fingerPrint2 sensor = 2
+// 	card         sensor = 8
+// )
+
+type User struct {
+	Id               int    `json:"Id"`
+	Level            Level  `json:"Level"`
+	Sensor           Sensor `json:"Sensor"`
+	CardFacilityCode uint8  `json:"CardFacilityCode"`
+	CardId           uint16 `json:"CardId"`
+	Fingerprint1     []byte `json:"Fingerprint1,omitempty"` // Template format=SmartBio, Size=1404 bytes little endian, Image Dimension=256x256 (403dpi)
+	Fingerprint2     []byte `json:"Fingerprint2,omitempty"` // Template format=SmartBio, Size=1404 bytes little endian, Image Dimension=256x256 (403dpi)
+}
 
 // Obtain number of user registered to machine
 func (dev *Sf3000) GetUserCount() (int, error) {
@@ -46,7 +69,7 @@ func (dev *Sf3000) GetUserCount() (int, error) {
 }
 
 // Get list of users from machine
-func (dev *Sf3000) GetUsers() ([]entity.User, error) {
+func (dev *Sf3000) GetUsers() ([]User, error) {
 	// prepare command bytes array
 	dev.prepareCommand(0x0109, 0x0)
 	// Send command
@@ -54,10 +77,10 @@ func (dev *Sf3000) GetUsers() ([]entity.User, error) {
 	reply1 := make([]byte, 8)
 	cnt, err := dev.conn.Read(reply1)
 	if err != nil {
-		return []entity.User{}, fmt.Errorf("send command to server failed: %v", err)
+		return []User{}, fmt.Errorf("send command to server failed: %v", err)
 	}
 	if cnt != 8 {
-		return []entity.User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
+		return []User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
 	}
 	replyStatus := binary.LittleEndian.Uint16(reply1[4:6])
 	// verify reply status
@@ -66,10 +89,10 @@ func (dev *Sf3000) GetUsers() ([]entity.User, error) {
 		reply2 := make([]byte, 14)
 		cnt, err = dev.conn.Read(reply2)
 		if err != nil {
-			return []entity.User{}, fmt.Errorf("read server reply failed: %v", err)
+			return []User{}, fmt.Errorf("read server reply failed: %v", err)
 		}
 		if cnt != 14 {
-			return []entity.User{}, fmt.Errorf("invalid server reply. Expected message length is 14 but actual is %v", cnt)
+			return []User{}, fmt.Errorf("invalid server reply. Expected message length is 14 but actual is %v", cnt)
 		}
 		replyStatus = binary.LittleEndian.Uint16(reply2[6:8])
 		// verify second reply status
@@ -81,7 +104,7 @@ func (dev *Sf3000) GetUsers() ([]entity.User, error) {
 			for {
 				cnt, err = dev.conn.Read(reply3)
 				if err != nil {
-					return []entity.User{}, fmt.Errorf("read server reply failed: %v", err)
+					return []User{}, fmt.Errorf("read server reply failed: %v", err)
 				}
 				data = append(data, reply3[4:cnt-2]...)
 				if cnt == 0 || len(data) == cap(data) {
@@ -89,29 +112,30 @@ func (dev *Sf3000) GetUsers() ([]entity.User, error) {
 				}
 			}
 
-			users := make([]entity.User, 0, dataLength)
+			users := make([]User, 0, dataLength)
 			for i := uint32(0); i < dataLength; i++ {
 				uId := binary.LittleEndian.Uint32(data[i*8 : 4+i*8])
 				uLevel := data[4+i*8]
 				uSensor := data[5+i*8]
 				uCardId := binary.LittleEndian.Uint16(data[6+i*8 : 8+i*8])
-				users = append(users, entity.User{
+				users = append(users, User{
 					Id:     int(uId),
-					Level:  entity.Level(uLevel),
-					Sensor: entity.Sensor(uSensor),
+					Level:  Level(uLevel),
+					Sensor: Sensor(uSensor),
 					CardId: uCardId})
 			}
 			return users, nil
 		}
 	}
-	return []entity.User{}, fmt.Errorf("invalid respond message")
+	return []User{}, fmt.Errorf("invalid respond message")
 }
 
-func (dev *Sf3000) GetEnrollData(userId int) (entity.User, error) {
+func (dev *Sf3000) GetEnrollData(userId int) (User, error) {
 	// prepare command bytes array
 	const (
 		fingerPrintSize int = 1404 + 12
 		enrollDataSize  int = (4*8 + fingerPrintSize*2)
+		bufferLength    int = 1460 + 1422
 	)
 	userIds := make([]byte, 4)
 	binary.LittleEndian.PutUint32(userIds, uint32(userId))
@@ -121,62 +145,57 @@ func (dev *Sf3000) GetEnrollData(userId int) (entity.User, error) {
 	reply1 := make([]byte, 8)
 	cnt, err := dev.conn.Read(reply1)
 	if err != nil {
-		return entity.User{}, fmt.Errorf("send command to server failed: %v", err)
+		return User{}, fmt.Errorf("send command to server failed: %v", err)
 	}
 	if cnt != 8 {
-		return entity.User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
+		return User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
 	}
 	// verify reply status
 	if isMessageValid(reply1[:cnt]) {
 		// read second message
-		reply2 := make([]byte, 1026) // max package size is 1026 bytes
+		buffer := make([]byte, bufferLength)
 		data := make([]byte, 0, enrollDataSize)
-		for {
-			cnt, err = dev.conn.Read(reply2)
-			if err != nil {
-				return entity.User{}, fmt.Errorf("read server reply failed: %v", err)
-			}
-			data = append(data, reply2[4:cnt-2]...)
-			if len(data) == enrollDataSize {
-				break
+		index := 0
+		for index < bufferLength {
+			if cnt, err = dev.conn.Read(buffer[index:]); err == nil {
+				index += cnt
 			}
 		}
-		replyStatus := binary.LittleEndian.Uint16(data[28:32])
-		if replyStatus == 1 {
-			cardStatus := binary.LittleEndian.Uint32(data[4:8])
-			fingerprint1Status := binary.LittleEndian.Uint32(data[8:12])
-			fingerprint2Status := binary.LittleEndian.Uint32(data[12:16])
-			cardId := uint16(0)
-			cardFacilityCode := uint8(0)
-			if cardStatus == 1 {
-				cardId = binary.LittleEndian.Uint16(data[24:26])
-				cardFacilityCode = data[26]
-			}
-			fingerprint1 := []byte{}
-			if fingerprint1Status == 1 {
-				fingerprint1 = data[32 : 32+fingerPrintSize]
-			}
-			fingerprint2 := []byte{}
-			if fingerprint2Status == 1 {
-				fingerprint2 = data[32+fingerPrintSize:]
-			}
-			user := entity.User{
-				Id:               userId,
-				Level:            entity.Level(0),
-				Sensor:           entity.Sensor(0),
-				CardId:           cardId,
-				CardFacilityCode: cardFacilityCode,
-				Fingerprint1:     fingerprint1,
-				Fingerprint2:     fingerprint2}
-			return user, nil
-		} else {
-			return entity.User{}, nil
+		for i := 0; i < bufferLength; i += 1026 {
+			chunk := buffer[i+4 : min(bufferLength, i+1026)]
+			data = append(data, chunk...)
 		}
+		cardStatus := binary.LittleEndian.Uint32(data[4:8])
+		fingerprint1Status := binary.LittleEndian.Uint32(data[8:12])
+		fingerprint2Status := binary.LittleEndian.Uint32(data[12:16])
+		cardId := uint16(0)
+		cardFacilityCode := uint8(0)
+		if cardStatus == 1 {
+			cardId = binary.LittleEndian.Uint16(data[24:26])
+			cardFacilityCode = data[26]
+		}
+		fingerprint1 := []byte{}
+		if fingerprint1Status == 1 {
+			fingerprint1 = data[32 : 32+fingerPrintSize]
+		}
+		fingerprint2 := []byte{}
+		if fingerprint2Status == 1 {
+			fingerprint2 = data[32+fingerPrintSize:]
+		}
+		user := User{
+			Id:               userId,
+			Level:            Level(0),
+			Sensor:           Sensor(0),
+			CardFacilityCode: cardFacilityCode,
+			CardId:           cardId,
+			Fingerprint1:     fingerprint1,
+			Fingerprint2:     fingerprint2}
+		return user, nil
 	}
-	return entity.User{}, fmt.Errorf("invalid respond message")
+	return User{}, fmt.Errorf("invalid respond message")
 }
 
-func (dev *Sf3000) SetEnrollData(user entity.User) (bool, error) {
+func (dev *Sf3000) SetEnrollData(user User) (bool, error) {
 	// prepare command bytes array
 	const (
 		fingerPrintSize int = 1404 + 12
@@ -245,17 +264,6 @@ func (dev *Sf3000) SetEnrollData(user entity.User) (bool, error) {
 		} else {
 			data = append(data, make([]byte, fingerPrintSize)...)
 		}
-		// buffer := make([]byte, 0, enrollDataSize+6*3)
-		// for i := 0; i < enrollDataSize; i += 1020 {
-		// 	if i+1020 < enrollDataSize {
-		// 		buffer = append([]byte{0x5a, 0xa5, 0x55, 0x01}, data[i:1020]...)
-		// 		buffer = append(buffer, []byte{0, 0}...)
-		// 	} else {
-		// 		buffer = append([]byte{0x5a, 0xa5, 0x55, 0x01}, make([]byte, 1022)...)
-		// 	}
-		// 	calculateChecksum()
-
-		// }
 		chunk := 0
 		buffer := make([]byte, 0)
 		for i := 0; i < enrollDataSize; i += 1020 {

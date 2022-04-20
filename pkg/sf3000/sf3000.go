@@ -23,6 +23,12 @@ func calculateChecksum(data []byte) {
 	}
 	binary.LittleEndian.PutUint16(data[len(data)-2:], checksum)
 }
+func min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func (dev *Sf3000) prepareCommand(command uint16, parameters ...uint16) {
 	_ = dev.command[15] // early bounds check to guarantee safety of writes below

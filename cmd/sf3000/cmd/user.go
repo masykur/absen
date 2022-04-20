@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/masykur/keico/pkg/entity"
+	"github.com/masykur/keico/pkg/sf3000"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +29,7 @@ var userGetCommand = &cobra.Command{
 var userSetCommand = &cobra.Command{
 	Use:     "set",
 	Short:   "Enroll user to machine",
-	Example: `sf3000 user set --host 192.168.0.1 --nid 123 -d '{\"Id\":12345678,\"CardId\":45123,\"CardFacilityCode\":186,\"Fingerprint1\":\"\",\"Fingerprint2\":\"\"}'`,
+	Example: `sf3000 user set --host 192.168.0.1 --nid 123 -d '{\"Id\":12345678,\"CardFacilityCode\":186,\"CardId\":45123,\"Fingerprint1\":\"\",\"Fingerprint2\":\"\"}'`,
 	Args:    cobra.ExactArgs(0),
 	Run:     setUser}
 
@@ -147,8 +147,8 @@ func getUser(cmd *cobra.Command, args []string) {
 					}
 					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 					table.SetAlignment(tablewriter.ALIGN_LEFT) // Set Alignment
-					table.SetHeader([]string{"User ID", "Card ID", "CardFacilityCode", "Fingerprint1", "Fingerprint2"})
-					table.Append([]string{strconv.Itoa(user.Id), strconv.Itoa(int(user.CardId)), strconv.Itoa(int(user.CardFacilityCode)), hex.EncodeToString(user.Fingerprint1), hex.EncodeToString(user.Fingerprint2)})
+					table.SetHeader([]string{"User ID", "CardFacilityCode", "Card ID", "Fingerprint1", "Fingerprint2"})
+					table.Append([]string{strconv.Itoa(user.Id), strconv.Itoa(int(user.CardFacilityCode)), strconv.Itoa(int(user.CardId)), hex.EncodeToString(user.Fingerprint1), hex.EncodeToString(user.Fingerprint2)})
 					table.Render()
 				default:
 					log.Fatalln("Invalid output format")
@@ -165,7 +165,7 @@ func setUser(cmd *cobra.Command, args []string) {
 	if conn, device, ok := connect(); ok {
 		defer conn.Close()
 		if data != "" {
-			var user entity.User
+			var user sf3000.User
 			if err := json.Unmarshal([]byte(data), &user); err == nil {
 				ok, err := device.SetEnrollData(user)
 				if err != nil {
@@ -188,7 +188,7 @@ func setUser(cmd *cobra.Command, args []string) {
 				os.Exit(2)
 			}
 			defer f.Close()
-			var user entity.User
+			var user sf3000.User
 			json.Unmarshal(jsonText, &user)
 			ok, err := device.SetEnrollData(user)
 			if err != nil {
