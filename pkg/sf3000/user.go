@@ -32,132 +32,60 @@ type User struct {
 
 // Obtain number of user registered to machine
 func (dev *Sf3000) GetUserCount() (int, error) {
-	// prepare command bytes array
-	dev.prepareCommand(0x0116, 0x0000, 0x0000, 0x0001)
-	// Send command
-	dev.conn.Write(dev.command)
-	reply1 := make([]byte, 8)
-	cnt, err := dev.conn.Read(reply1)
-	if err != nil {
-		return 0, fmt.Errorf("send command to server failed: %v", err)
-	}
-	if cnt != 8 {
-		return 0, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
-	}
-	replyStatus := binary.LittleEndian.Uint16(reply1[4:6])
-	// verify reply status
-	if replyStatus == 1 && isMessageValid(reply1[:cnt]) {
-		reply2 := make([]byte, 14)
-		// read second message
-		cnt, err = dev.conn.Read(reply2)
-		if err != nil {
-			return 0, fmt.Errorf("read server reply failed: %v", err)
-		}
-		if cnt != 14 {
-			return 0, fmt.Errorf("invalid server reply. Expected message length is 14 but actual is %v", cnt)
-		}
-		replyStatus = binary.LittleEndian.Uint16(reply2[6:8])
-		// verify second reply status
-		if replyStatus == 1 && isMessageValid(reply2[:cnt]) {
-			// get user count data
-			num := binary.LittleEndian.Uint32(reply2[8:12])
-			// first date is January 1st, 2000
-			return int(num), nil
-		}
+	if response, err := dev.sendCommand(0x0116, 0x0000000100000000, 14); err == nil {
+		// get user count data
+		num := binary.LittleEndian.Uint32(response)
+		return int(num), nil
 	}
 	return 0, fmt.Errorf("invalid respond message")
 }
 
 // Get list of users from machine
 func (dev *Sf3000) GetUsers() ([]User, error) {
-	// prepare command bytes array
-	dev.prepareCommand(0x0109, 0x0)
-	// Send command
-	dev.conn.Write(dev.command)
-	reply1 := make([]byte, 8)
-	cnt, err := dev.conn.Read(reply1)
-	if err != nil {
-		return []User{}, fmt.Errorf("send command to server failed: %v", err)
-	}
-	if cnt != 8 {
-		return []User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
-	}
-	replyStatus := binary.LittleEndian.Uint16(reply1[4:6])
-	// verify reply status
-	if replyStatus == 1 && isMessageValid(reply1[:cnt]) {
-		// read second message
-		reply2 := make([]byte, 14)
-		cnt, err = dev.conn.Read(reply2)
-		if err != nil {
-			return []User{}, fmt.Errorf("read server reply failed: %v", err)
-		}
-		if cnt != 14 {
-			return []User{}, fmt.Errorf("invalid server reply. Expected message length is 14 but actual is %v", cnt)
-		}
-		replyStatus = binary.LittleEndian.Uint16(reply2[6:8])
-		// verify second reply status
-		if replyStatus == 1 && isMessageValid(reply2[:cnt]) {
-			// get user count data
-			dataLength := binary.LittleEndian.Uint32(reply2[8:12])
-			reply3 := make([]byte, 1026) // max package size is 1026 bytes
-			data := make([]byte, 0, dataLength*8)
-			for {
-				cnt, err = dev.conn.Read(reply3)
-				if err != nil {
-					return []User{}, fmt.Errorf("read server reply failed: %v", err)
-				}
-				data = append(data, reply3[4:cnt-2]...)
+	if response, err := dev.sendCommand(0x0109, 0x00, 14); err == nil {
+		// get user count data
+		dataLength := binary.LittleEndian.Uint32(response)
+		buffer := make([]byte, 1026) // max package size is 1026 bytes
+		data := make([]byte, 0, dataLength*8)
+		for {
+			if cnt, err := dev.conn.Read(buffer); err == nil {
+				data = append(data, buffer[4:cnt-2]...)
 				if cnt == 0 || len(data) == cap(data) {
 					break
 				}
 			}
-
-			users := make([]User, 0, dataLength)
-			for i := uint32(0); i < dataLength; i++ {
-				uId := binary.LittleEndian.Uint32(data[i*8 : 4+i*8])
-				uLevel := data[4+i*8]
-				uSensor := data[5+i*8]
-				uCardId := binary.LittleEndian.Uint16(data[6+i*8 : 8+i*8])
-				users = append(users, User{
-					Id:     int(uId),
-					Level:  Level(uLevel),
-					Sensor: Sensor(uSensor),
-					CardId: uCardId})
-			}
-			return users, nil
 		}
+
+		users := make([]User, 0, dataLength)
+		for i := uint32(0); i < dataLength; i++ {
+			uId := binary.LittleEndian.Uint32(data[i*8 : 4+i*8])
+			uLevel := data[4+i*8]
+			uSensor := data[5+i*8]
+			uCardId := binary.LittleEndian.Uint16(data[6+i*8 : 8+i*8])
+			users = append(users, User{
+				Id:     int(uId),
+				Level:  Level(uLevel),
+				Sensor: Sensor(uSensor),
+				CardId: uCardId})
+		}
+		return users, nil
 	}
 	return []User{}, fmt.Errorf("invalid respond message")
 }
 
 func (dev *Sf3000) GetEnrollData(userId int) (User, error) {
-	// prepare command bytes array
 	const (
 		fingerPrintSize int = 1404 + 12
 		enrollDataSize  int = (4*8 + fingerPrintSize*2)
 		bufferLength    int = 1460 + 1422
 	)
-	userIds := make([]byte, 4)
-	binary.LittleEndian.PutUint32(userIds, uint32(userId))
-	dev.prepareCommand(0x0103, uint16(userId&0xffff), uint16(userId>>16))
-	// Send command
-	dev.conn.Write(dev.command)
-	reply1 := make([]byte, 8)
-	cnt, err := dev.conn.Read(reply1)
-	if err != nil {
-		return User{}, fmt.Errorf("send command to server failed: %v", err)
-	}
-	if cnt != 8 {
-		return User{}, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
-	}
-	// verify reply status
-	if isMessageValid(reply1[:cnt]) {
+	if _, err := dev.sendCommand(0x0103, uint64(userId)); err == nil {
 		// read second message
 		buffer := make([]byte, bufferLength)
 		data := make([]byte, 0, enrollDataSize)
 		index := 0
 		for index < bufferLength {
-			if cnt, err = dev.conn.Read(buffer[index:]); err == nil {
+			if cnt, err := dev.conn.Read(buffer[index:]); err == nil {
 				index += cnt
 			}
 		}
@@ -201,21 +129,7 @@ func (dev *Sf3000) SetEnrollData(user User) (bool, error) {
 		fingerPrintSize int = 1404 + 12
 		enrollDataSize  int = (4*8 + fingerPrintSize*2)
 	)
-	userIds := make([]byte, 4)
-	binary.LittleEndian.PutUint32(userIds, uint32(user.Id))
-	dev.prepareCommand(0x0104, uint16(user.Id&0xffff), uint16(user.Id>>16))
-	// Send command
-	dev.conn.Write(dev.command)
-	reply1 := make([]byte, 8)
-	cnt, err := dev.conn.Read(reply1)
-	if err != nil {
-		return false, fmt.Errorf("send command to server failed: %v", err)
-	}
-	if cnt != 8 {
-		return false, fmt.Errorf("invalid server reply. Expected message length is 8 but actual is %v", cnt)
-	}
-	// verify reply status
-	if isMessageValid(reply1[:cnt]) {
+	if _, err := dev.sendCommand(0x0104, uint64(user.Id)); err == nil {
 		// prepare enroll data
 		data := make([]byte, 0, enrollDataSize)
 		// 1st 4 bytes
@@ -283,7 +197,7 @@ func (dev *Sf3000) SetEnrollData(user User) (bool, error) {
 		dev.conn.Write(buffer[1026:2486])
 		dev.conn.Write(buffer[2486:])
 		reply2 := make([]byte, 14)
-		cnt, err = dev.conn.Read(reply2)
+		cnt, err := dev.conn.Read(reply2)
 		if err != nil {
 			return false, fmt.Errorf("read server reply failed: %v", err)
 		}

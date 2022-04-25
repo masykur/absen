@@ -40,12 +40,12 @@ func init() {
 // Obtain product code
 func getProductCode(cmd *cobra.Command, args []string) {
 	if conn, device, ok := connect(); ok {
+		defer conn.Close()
 		if productCode, err := device.GetProductCode(); err == nil {
 			fmt.Println(productCode)
 		} else {
 			log.Fatalln(err)
 		}
-		conn.Close()
 	}
 }
 

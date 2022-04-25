@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -63,9 +62,7 @@ func setTime(cmd *cobra.Command, args []string) {
 	}
 	if conn, device, ok := connect(); ok {
 		defer conn.Close()
-		if _, err := device.SetDateTime(t); err == nil {
-			os.Exit(0)
-		} else {
+		if _, err := device.SetDateTime(t); err != nil {
 			log.Fatalln(err)
 		}
 	}
