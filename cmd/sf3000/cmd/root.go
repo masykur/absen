@@ -2,12 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"net"
 	"os"
-	"strconv"
-	"time"
 
-	"github.com/masykur/keico/pkg/sf3000"
 	"github.com/spf13/cobra"
 )
 
@@ -58,24 +54,24 @@ func initConfig() {
 
 }
 
-// Open connection and send handshake command to machine
-func connect() (*net.TCPConn, *sf3000.Sf3000, bool) {
-	servAddr := host + ":" + strconv.Itoa(port)
-	dialer := net.Dialer{Timeout: time.Duration(time.Second * 20)}
-	conn, err := dialer.Dial("tcp", servAddr)
-	//conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		println("Dial failed:", err.Error())
-		os.Exit(1)
-	}
-	if tcpConn, ok := conn.(*net.TCPConn); ok {
-		device := new(sf3000.Sf3000)
-		connected, err := device.Connect(tcpConn, uint16(nid), uint16(password))
-		if err != nil {
-			println(err.Error())
-			os.Exit(1)
-		}
-		return tcpConn, device, connected
-	}
-	return nil, nil, false
-}
+// // Open connection and send handshake command to machine
+// func connect() (*net.TCPConn, *sf3000.Sf3000, bool) {
+// 	servAddr := host + ":" + strconv.Itoa(port)
+// 	dialer := net.Dialer{Timeout: time.Duration(time.Second * 20)}
+// 	conn, err := dialer.Dial("tcp", servAddr)
+// 	//conn, err := net.DialTCP("tcp", nil, tcpAddr)
+// 	if err != nil {
+// 		println("Dial failed:", err.Error())
+// 		os.Exit(1)
+// 	}
+// 	if tcpConn, ok := conn.(*net.TCPConn); ok {
+// 		device := new(sf3000.Sf3000)
+// 		connected, err := device.Connect(tcpConn, uint16(nid), uint16(password))
+// 		if err != nil {
+// 			println(err.Error())
+// 			os.Exit(1)
+// 		}
+// 		return tcpConn, device, connected
+// 	}
+// 	return nil, nil, false
+// }

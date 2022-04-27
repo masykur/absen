@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/masykur/keico/pkg/sf3000"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -28,9 +30,11 @@ func init() {
 	RootCmd.AddCommand(logCommand)
 }
 func fetchLog(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
 		if _, list, err := device.FetchAllLogs(); err == nil {
+			device.Close()
 			switch outputFormat {
 			case "json":
 				data, _ := json.Marshal(&list)
@@ -74,7 +78,11 @@ func fetchLog(cmd *cobra.Command, args []string) {
 			}
 
 		} else {
+			device.Close()
 			log.Fatalln(err)
 		}
+	} else {
+		device.Close()
+		log.Fatalln(err)
 	}
 }

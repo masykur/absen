@@ -28,7 +28,7 @@ Implemented machines are below
 - [ ] Delete all enrolled users from machine
 - [ ] Modify user privilage
 #### Log data
-- [ ] Read general log data
+- [x] Read general log data
 - [ ] Read super log data
 - [ ] Pull general log data
 - [ ] Pull super log data 

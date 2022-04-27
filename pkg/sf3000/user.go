@@ -29,6 +29,11 @@ type User struct {
 	Fingerprint1     []byte `json:"Fingerprint1,omitempty"` // Template format=SmartBio, Size=1404 bytes little endian, Image Dimension=256x256 (403dpi)
 	Fingerprint2     []byte `json:"Fingerprint2,omitempty"` // Template format=SmartBio, Size=1404 bytes little endian, Image Dimension=256x256 (403dpi)
 }
+type UserInfo struct {
+	UserId    int32
+	Timezone1 int16
+	Timezone2 int16
+}
 
 // Obtain number of user registered to machine
 func (dev *Sf3000) GetUserCount() (int, error) {
@@ -40,24 +45,50 @@ func (dev *Sf3000) GetUserCount() (int, error) {
 	return 0, fmt.Errorf("invalid respond message")
 }
 
-// Get list of users from machine
+// Obtain number of user registered to machine
+func (dev *Sf3000) GetUserInfo(userId int) (UserInfo, error) {
+	if response, err := dev.sendCommand(0x0105, uint64(userId), 14, 14); err == nil {
+		id := binary.LittleEndian.Uint32(response[0:4])
+		timezone1 := binary.LittleEndian.Uint16(response[4:6])
+		timezone2 := binary.LittleEndian.Uint16(response[6:8])
+		return UserInfo{UserId: int32(id), Timezone1: int16(timezone1), Timezone2: int16(timezone2)}, nil
+	}
+	return UserInfo{}, fmt.Errorf("invalid respond message")
+}
+
+// Obtain number of user registered to machine
+func (dev *Sf3000) SetUserInfo(userInfo UserInfo) (bool, error) {
+	if _, err := dev.sendCommand(0x0106, uint64(userInfo.UserId), 14); err == nil {
+		//id := binary.LittleEndian.Uint32(response[0:4])
+		param := uint64((uint64(userInfo.Timezone2) << 48) | (uint64(userInfo.Timezone1) << 32) | uint64(userInfo.UserId))
+		if _, err := dev.sendCommandParameter64(param, 14); err == nil {
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("invalid respond message")
+}
+
+// Get list of users from machine (ReadAllUserID)
 func (dev *Sf3000) GetUsers() ([]User, error) {
 	if response, err := dev.sendCommand(0x0109, 0x00, 14); err == nil {
-		// get user count data
-		dataLength := binary.LittleEndian.Uint32(response)
-		buffer := make([]byte, 1026) // max package size is 1026 bytes
-		data := make([]byte, 0, dataLength*8)
-		for {
+		count := binary.LittleEndian.Uint32(response)
+		size := int(count) * 8
+		size += int((size+1019)/1020) * 6 // roundup
+		raw := make([]byte, 0, size)
+		for len(raw) < size {
+			buffer := make([]byte, 1460)
 			if cnt, err := dev.conn.Read(buffer); err == nil {
-				data = append(data, buffer[4:cnt-2]...)
-				if cnt == 0 || len(data) == cap(data) {
-					break
-				}
+				raw = append(raw, buffer[:cnt]...)
 			}
 		}
+		data := make([]byte, 0, count*8)
+		for i := 0; i < size; i += 1026 {
+			chunk := raw[4+i : min(i+1026, size)-2]
+			data = append(data, chunk...)
+		}
 
-		users := make([]User, 0, dataLength)
-		for i := uint32(0); i < dataLength; i++ {
+		users := make([]User, 0, count)
+		for i := uint32(0); i < count; i++ {
 			uId := binary.LittleEndian.Uint32(data[i*8 : 4+i*8])
 			uLevel := data[4+i*8]
 			uSensor := data[5+i*8]

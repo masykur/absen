@@ -3,7 +3,10 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
+	"github.com/masykur/keico/pkg/sf3000"
 	"github.com/spf13/cobra"
 )
 
@@ -39,24 +42,32 @@ func init() {
 
 // Obtain product code
 func getProductCode(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if productCode, err := device.GetProductCode(); err == nil {
 			fmt.Println(productCode)
 		} else {
 			log.Fatalln(err)
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }
 
 // Obtain serial number
 func getSerialNumber(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if serialNumber, err := device.GetSerialNumber(); err == nil {
 			fmt.Println(serialNumber)
 		} else {
 			log.Fatalln(err)
 		}
-		conn.Close()
+	} else {
+		log.Fatalln(err)
 	}
 }

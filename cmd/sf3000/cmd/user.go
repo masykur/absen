@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/masykur/keico/pkg/sf3000"
 	"github.com/olekukonko/tablewriter"
@@ -70,22 +71,27 @@ func init() {
 
 // Obtain number of users registered in the machine
 func getUserCount(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if count, err := device.GetUserCount(); err == nil {
 			fmt.Println(count)
 		} else {
 			log.Fatalln(err)
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }
 
 // Retrieve list of users registered in the machine
 func getUsers(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
-		users, err := device.GetUsers()
-		if err == nil {
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		if users, err := device.GetUsers(); err == nil {
+			device.Close()
 			switch outputFormat {
 			case "json":
 				data, _ := json.Marshal(&users)
@@ -101,16 +107,22 @@ func getUsers(cmd *cobra.Command, args []string) {
 				log.Fatalln("Invalid output format")
 			}
 		} else {
+			device.Close()
 			log.Fatalln(err)
 		}
+	} else {
+		device.Close()
+		log.Fatalln(err)
 	}
 }
 
 // Obtain number of users registered in the machine
 func getUser(cmd *cobra.Command, args []string) {
 	if userId, err := strconv.Atoi(args[0]); err == nil {
-		if conn, device, ok := connect(); ok {
-			defer conn.Close()
+		servAddr := host + ":" + strconv.Itoa(port)
+		device := new(sf3000.Sf3000)
+		if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+			defer device.Close()
 			if user, err := device.GetEnrollData(int(userId)); err == nil {
 				switch outputFormat {
 				case "json":
@@ -156,14 +168,18 @@ func getUser(cmd *cobra.Command, args []string) {
 			} else {
 				log.Fatalln(err)
 			}
+		} else {
+			log.Fatalln(err)
 		}
 	}
 }
 
 // Obtain number of users registered in the machine
 func setUser(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if data != "" {
 			var user sf3000.User
 			if err := json.Unmarshal([]byte(data), &user); err == nil {
@@ -202,5 +218,7 @@ func setUser(cmd *cobra.Command, args []string) {
 			cmd.PrintErrln("No input data available")
 			cmd.Help()
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }
