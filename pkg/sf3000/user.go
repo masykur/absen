@@ -121,7 +121,7 @@ func (dev *Sf3000) GetEnrollData(userId int) (User, error) {
 			}
 		}
 		for i := 0; i < bufferLength; i += 1026 {
-			chunk := buffer[i+4 : min(bufferLength, i+1026)]
+			chunk := buffer[i+4 : min(bufferLength, i+1026)-2]
 			data = append(data, chunk...)
 		}
 		cardStatus := binary.LittleEndian.Uint32(data[4:8])
@@ -203,7 +203,7 @@ func (dev *Sf3000) SetEnrollData(user User) (bool, error) {
 		} else {
 			data = append(data, make([]byte, fingerPrintSize)...)
 		}
-		// 10th 1404+12 bytes of fingerprint1 data
+		// 10th 1404+12 bytes of fingerprint2 data
 		if len(user.Fingerprint2) > 0 {
 			data = append(data, user.Fingerprint2...)
 		} else {
@@ -212,7 +212,10 @@ func (dev *Sf3000) SetEnrollData(user User) (bool, error) {
 		chunk := 0
 		buffer := make([]byte, 0)
 		for i := 0; i < enrollDataSize; i += 1020 {
-			buffer = append(buffer, []byte{0x5a, 0xa5, 0x55, 0x01}...)
+			chunkCommand := []byte{0x5a, 0xa5, 0x00, 0x00}
+			binary.LittleEndian.PutUint16(chunkCommand[2:4], dev.machineId)
+			buffer = append(buffer, chunkCommand...)
+
 			if i+1020 < enrollDataSize {
 				buffer = append(buffer, data[i:i+1020]...)
 				buffer = append(buffer, []byte{0, 0}...)
