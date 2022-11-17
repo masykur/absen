@@ -7,8 +7,9 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
-	"github.com/masykur/keico/pkg/entity"
+	"github.com/masykur/absen/pkg/sf3000"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,7 @@ var userGetCommand = &cobra.Command{
 var userSetCommand = &cobra.Command{
 	Use:     "set",
 	Short:   "Enroll user to machine",
-	Example: `sf3000 user set --host 192.168.0.1 --nid 123 -d '{\"Id\":12345678,\"CardId\":45123,\"CardFacilityCode\":186,\"Fingerprint1\":\"\",\"Fingerprint2\":\"\"}'`,
+	Example: `sf3000 user set --host 192.168.0.1 --nid 123 -d '{\"Id\":12345678,\"CardFacilityCode\":186,\"CardId\":45123,\"Fingerprint1\":\"\",\"Fingerprint2\":\"\"}'`,
 	Args:    cobra.ExactArgs(0),
 	Run:     setUser}
 
@@ -70,22 +71,27 @@ func init() {
 
 // Obtain number of users registered in the machine
 func getUserCount(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if count, err := device.GetUserCount(); err == nil {
 			fmt.Println(count)
 		} else {
 			log.Fatalln(err)
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }
 
 // Retrieve list of users registered in the machine
 func getUsers(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
-		users, err := device.GetUsers()
-		if err == nil {
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		if users, err := device.GetUsers(); err == nil {
+			device.Close()
 			switch outputFormat {
 			case "json":
 				data, _ := json.Marshal(&users)
@@ -101,16 +107,22 @@ func getUsers(cmd *cobra.Command, args []string) {
 				log.Fatalln("Invalid output format")
 			}
 		} else {
+			device.Close()
 			log.Fatalln(err)
 		}
+	} else {
+		device.Close()
+		log.Fatalln(err)
 	}
 }
 
 // Obtain number of users registered in the machine
 func getUser(cmd *cobra.Command, args []string) {
 	if userId, err := strconv.Atoi(args[0]); err == nil {
-		if conn, device, ok := connect(); ok {
-			defer conn.Close()
+		servAddr := host + ":" + strconv.Itoa(port)
+		device := new(sf3000.Sf3000)
+		if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+			defer device.Close()
 			if user, err := device.GetEnrollData(int(userId)); err == nil {
 				switch outputFormat {
 				case "json":
@@ -147,8 +159,8 @@ func getUser(cmd *cobra.Command, args []string) {
 					}
 					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 					table.SetAlignment(tablewriter.ALIGN_LEFT) // Set Alignment
-					table.SetHeader([]string{"User ID", "Card ID", "CardFacilityCode", "Fingerprint1", "Fingerprint2"})
-					table.Append([]string{strconv.Itoa(user.Id), strconv.Itoa(int(user.CardId)), strconv.Itoa(int(user.CardFacilityCode)), hex.EncodeToString(user.Fingerprint1), hex.EncodeToString(user.Fingerprint2)})
+					table.SetHeader([]string{"User ID", "CardFacilityCode", "Card ID", "Fingerprint1", "Fingerprint2"})
+					table.Append([]string{strconv.Itoa(user.Id), strconv.Itoa(int(user.CardFacilityCode)), strconv.Itoa(int(user.CardId)), hex.EncodeToString(user.Fingerprint1), hex.EncodeToString(user.Fingerprint2)})
 					table.Render()
 				default:
 					log.Fatalln("Invalid output format")
@@ -156,16 +168,20 @@ func getUser(cmd *cobra.Command, args []string) {
 			} else {
 				log.Fatalln(err)
 			}
+		} else {
+			log.Fatalln(err)
 		}
 	}
 }
 
 // Obtain number of users registered in the machine
 func setUser(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if data != "" {
-			var user entity.User
+			var user sf3000.User
 			if err := json.Unmarshal([]byte(data), &user); err == nil {
 				ok, err := device.SetEnrollData(user)
 				if err != nil {
@@ -188,7 +204,7 @@ func setUser(cmd *cobra.Command, args []string) {
 				os.Exit(2)
 			}
 			defer f.Close()
-			var user entity.User
+			var user sf3000.User
 			json.Unmarshal(jsonText, &user)
 			ok, err := device.SetEnrollData(user)
 			if err != nil {
@@ -202,5 +218,7 @@ func setUser(cmd *cobra.Command, args []string) {
 			cmd.PrintErrln("No input data available")
 			cmd.Help()
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }

@@ -28,7 +28,7 @@ Implemented machines are below
 - [ ] Delete all enrolled users from machine
 - [ ] Modify user privilage
 #### Log data
-- [ ] Read general log data
+- [x] Read general log data
 - [ ] Read super log data
 - [ ] Pull general log data
 - [ ] Pull super log data 
@@ -38,6 +38,18 @@ Implemented machines are below
 - [ ] Delete all general log data
 - [ ] Delete all super log data
 
+## Keico SF3500 (Face ID)
+
+### Features
+#### Client
+- [x] Obtain device info
+- [x] Obtain user info
+- [x] Get list of registered users
+- [x] Get log data
+#### Server
+- [x] Listen incoming log data
+- [x] Listen incoming enrolled data
+- [x] Save log data into database
 
 ## RECO RAC2000, AC2200PC
 ### Features

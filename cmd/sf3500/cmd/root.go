@@ -16,9 +16,9 @@ var (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:     "sf3000",
-	Short:   "Keico SF3000 command line interface",
-	Long:    "Application to manage Keico SF3000 attendance machine.",
+	Use:     "sf3500",
+	Short:   "Keico SF3500 command line interface",
+	Long:    "Application to manage Keico SF3500 attendance machine.",
 	Version: "0.6.0"}
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
+	"strconv"
 	"time"
 
+	"github.com/masykur/absen/pkg/sf3000"
 	"github.com/spf13/cobra"
 )
 
@@ -44,13 +45,17 @@ func init() {
 	RootCmd.AddCommand(timeCommand)
 }
 func getTime(cmd *cobra.Command, args []string) {
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
 		if dateTime, err := device.GetDateTime(); err == nil {
 			fmt.Println(dateTime)
 		} else {
 			log.Fatalln(err)
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }
 
@@ -61,12 +66,16 @@ func setTime(cmd *cobra.Command, args []string) {
 	} else {
 		t, _ = time.ParseInLocation("2006-01-02 15:04:05", args[0], time.Local)
 	}
-	if conn, device, ok := connect(); ok {
-		defer conn.Close()
-		if _, err := device.SetDateTime(t); err == nil {
-			os.Exit(0)
+	servAddr := host + ":" + strconv.Itoa(port)
+	device := new(sf3000.Sf3000)
+	if ok, err := device.Connect(servAddr, nid, password, time.Duration(time.Second*20)); ok {
+		defer device.Close()
+		if ok, err := device.SetDateTime(t); ok {
+			return
 		} else {
 			log.Fatalln(err)
 		}
+	} else {
+		log.Fatalln(err)
 	}
 }
