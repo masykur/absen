@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/masykur/keico/pkg/sf3500/cmds"
+	"github.com/masykur/absen/pkg/sf3500/cmds"
 
-	"github.com/masykur/keico/pkg/sf3500/models"
+	"github.com/masykur/absen/pkg/sf3500/models"
 )
 
 func (dev *Sf3500) GetLog(packageId int, newLog int, beginTime time.Time, endTime time.Time, clearMark int) (int, []models.LogData, error) {

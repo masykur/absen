@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/masykur/keico/cmd/rac2000/cmd"
+	"github.com/masykur/absen/cmd/rac2000/cmd"
 )
 
 func main() {

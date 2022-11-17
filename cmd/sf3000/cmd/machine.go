@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/masykur/keico/pkg/sf3000"
+	"github.com/masykur/absen/pkg/sf3000"
 	"github.com/spf13/cobra"
 )
 

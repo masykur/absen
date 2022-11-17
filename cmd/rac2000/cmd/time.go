@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/masykur/keico/pkg/rac2000"
+	"github.com/masykur/absen/pkg/rac2000"
 	"github.com/spf13/cobra"
 )
 

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/masykur/keico/pkg/sf3500/cmds"
-	"github.com/masykur/keico/pkg/sf3500/models"
+	"github.com/masykur/absen/pkg/sf3500/cmds"
+	"github.com/masykur/absen/pkg/sf3500/models"
 )
 
 func (dev *Sf3500) GetUserList(packageId int) (int, []models.User, error) {

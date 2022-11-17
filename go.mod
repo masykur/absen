@@ -1,4 +1,4 @@
-module github.com/masykur/keico
+module github.com/masykur/absen
 
 go 1.17
 

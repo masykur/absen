@@ -3,7 +3,7 @@ package sf3500
 import (
 	"encoding/json"
 
-	"github.com/masykur/keico/pkg/sf3500/models"
+	"github.com/masykur/absen/pkg/sf3500/models"
 )
 
 func (dev *Sf3500) GetDeviceInfo() (models.DeviceInfo, error) {
